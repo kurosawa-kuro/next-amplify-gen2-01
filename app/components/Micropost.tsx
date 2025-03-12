@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { type MicropostType } from '../actions/microposts';
-import { createMicropost } from '../actions/server';
+import { type MicropostType, createMicropost } from '../actions/microposts';
 import { useRouter } from 'next/navigation';
 
 export const MicropostForm: React.FC = () => {

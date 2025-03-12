@@ -1,3 +1,5 @@
+'use server';
+
 import { cookies } from "next/headers";
 import { generateServerClientUsingCookies } from "@aws-amplify/adapter-nextjs/api";
 import type { Schema } from "@/amplify/data/resource";
@@ -32,8 +34,6 @@ export async function getMicroposts() {
 }
 
 export async function createMicropost(post: { title: string; image_url: string }) {
-  'use server';
-  
   try {
     const { data: newPost } = await cookiesClient.models.Micropost.create({
       title: post.title,

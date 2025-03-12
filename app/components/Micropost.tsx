@@ -1,57 +1,82 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { type MicropostType, createMicropost } from '../actions/microposts';
 import { useRouter } from 'next/navigation';
+import { Amplify } from 'aws-amplify';
 import { uploadData } from 'aws-amplify/storage';
+import config from '../../amplify_outputs.json';
 
 export const MicropostForm: React.FC = () => {
   const [title, setTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [bucketReady, setBucketReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    const checkBucketConfig = async () => {
+      try {
+        Amplify.configure(config);
+        console.log('Amplify Config:', config);
+        if (!config.storage?.bucket_name) {
+          throw new Error('バケットが設定されていません');
+        }
+        setBucketReady(true);
+      } catch (error) {
+        console.error('ストレージ設定エラー:', error);
+        alert('ストレージの設定が見つかりません。管理者に連絡してください。');
+      }
+    };
+
+    checkBucketConfig();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      const url = URL.createObjectURL(file);
-      // setPreviewUrl(url);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting || !selectedFile) return;
+    if (isSubmitting || !selectedFile || !bucketReady) return;
 
     try {
       setIsSubmitting(true);
-      
-      // Upload image to S3
-      const fileName = `microposts/${Date.now()}-${selectedFile.name}`;
+
+      // FileReaderでArrayBufferに変換
+      const fileReader = new FileReader();
+      const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+        fileReader.onload = () => resolve(fileReader.result as ArrayBuffer);
+        fileReader.onerror = () => reject(fileReader.error);
+        fileReader.readAsArrayBuffer(selectedFile);
+      });
+
+      // S3にアップロード - ここを修正
+      const fileName = `public/${Date.now()}-${selectedFile.name}`;  // protectedからpublicに変更
+      console.log('Uploading to:', fileName);
       const result = await uploadData({
-        key: fileName,
-        data: selectedFile,
-        options: {
-          contentType: selectedFile.type,
-        }
+        data: arrayBuffer,
+        path: fileName
       }).result;
 
-      if (!result.key) throw new Error('アップロードに失敗しました');
+      console.log('Upload result:', result);
 
-      // Create micropost with S3 URL
-      const imageUrl = `${process.env.NEXT_PUBLIC_API_URL}/storage/${fileName}`;
-      await createMicropost({ title, image_url: imageUrl });
-      
-      // Reset form
+      // マイクロポストの作成
+      const imageUrl = `${process.env.NEXT_PUBLIC_API_URL}/storage/${result.path}`;
+      await createMicropost({ 
+        title, 
+        image_url: imageUrl 
+      });
+
+      // フォームのリセット
       setTitle('');
       setSelectedFile(null);
-      setPreviewUrl('');
       if (fileInputRef.current) fileInputRef.current.value = '';
-      
       router.refresh();
     } catch (error) {
       console.error('投稿エラー:', error);
@@ -80,12 +105,11 @@ export const MicropostForm: React.FC = () => {
         />
       </div>
       <div>
-        <label htmlFor="image" className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
           画像
         </label>
         <input
           type="file"
-          id="image"
           ref={fileInputRef}
           accept="image/*"
           onChange={handleFileChange}
@@ -94,21 +118,10 @@ export const MicropostForm: React.FC = () => {
                    file:rounded-full file:border-0
                    file:text-sm file:font-semibold
                    file:bg-blue-50 file:text-blue-700
-                   hover:file:bg-blue-100
-                   dark:file:bg-blue-900 dark:file:text-blue-200"
+                   hover:file:bg-blue-100"
           required
           disabled={isSubmitting}
         />
-        {previewUrl && (
-          <div className="mt-4 aspect-video relative rounded-lg overflow-hidden">
-            <Image
-              src={previewUrl}
-              alt="プレビュー"
-              fill
-              className="object-cover"
-            />
-          </div>
-        )}
       </div>
       <button
         type="submit"
@@ -116,9 +129,9 @@ export const MicropostForm: React.FC = () => {
                  dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg transition-colors duration-200
                  focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
                  disabled:opacity-50 disabled:cursor-not-allowed"
-        disabled={isSubmitting || !selectedFile}
+        disabled={isSubmitting || !selectedFile || !bucketReady}
       >
-        {isSubmitting ? '投稿中...' : '投稿する'}
+        {!bucketReady ? 'ストレージ設定を確認中...' : (isSubmitting ? '投稿中...' : '投稿する')}
       </button>
     </form>
   );

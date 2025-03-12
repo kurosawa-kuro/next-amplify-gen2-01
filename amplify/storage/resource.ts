@@ -1,10 +1,11 @@
-import { defineStorage } from '@aws-amplify/backend-storage';
+import { defineStorage } from "@aws-amplify/backend";
 
 export const storage = defineStorage({
-  name: 'micropost-images',
-  access: (allow) => ({
-    'microposts/*': [
-      allow.guest.to(['read', 'write', 'delete'])
-    ]
-  })
-});
+    name: 'microposts',
+    access: (allow) => ({
+        'public/*': [
+            allow.authenticated.to(['write', 'read']),
+            allow.guest.to(['write', 'read'])
+        ]
+    })
+})

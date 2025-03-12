@@ -1,14 +1,6 @@
 'use server';
 
-import { cookies } from "next/headers";
-import { generateServerClientUsingCookies } from "@aws-amplify/adapter-nextjs/api";
-import type { Schema } from "@/amplify/data/resource";
-import outputs from "@/amplify_outputs.json";
-
-const cookiesClient = generateServerClientUsingCookies<Schema>({
-  config: outputs,
-  cookies,
-});
+import { cookiesClient } from "@/utils/amplify-utils";
 
 export type MicropostType = {
   id: string;

@@ -64,6 +64,7 @@ export const MicropostForm: React.FC = () => {
       }).result;
 
       console.log('Upload result:', result);
+      console.log('result.path:', result.path);
 
       // S3の直接URLを使用
       const imageUrl = `https://${config.storage.bucket_name}.s3.${config.storage.aws_region}.amazonaws.com/${result.path}`;
@@ -73,7 +74,7 @@ export const MicropostForm: React.FC = () => {
       console.log('imageUrlWithoutPublic URL:', imageUrlWithoutPublic);
       await createMicropost({ 
         title, 
-        image_url: imageUrlWithoutPublic
+        image_url: imageUrl
       });
 
       setTitle('');

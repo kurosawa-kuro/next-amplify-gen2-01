@@ -48,7 +48,6 @@ export const MicropostForm: React.FC = () => {
     try {
       setIsSubmitting(true);
 
-      // FileReaderでArrayBufferに変換
       const fileReader = new FileReader();
       const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
         fileReader.onload = () => resolve(fileReader.result as ArrayBuffer);
@@ -56,24 +55,27 @@ export const MicropostForm: React.FC = () => {
         fileReader.readAsArrayBuffer(selectedFile);
       });
 
-      // S3にアップロード - ここを修正
-      const fileName = `public/${Date.now()}-${selectedFile.name}`;  // protectedからpublicに変更
+      // S3にアップロード
+      const fileName = `${Date.now()}-${selectedFile.name}`;
       console.log('Uploading to:', fileName);
       const result = await uploadData({
         data: arrayBuffer,
-        path: fileName
+        path: `public/${fileName}`  // publicプレフィックスを付与
       }).result;
 
       console.log('Upload result:', result);
 
-      // マイクロポストの作成
-      const imageUrl = `${process.env.NEXT_PUBLIC_API_URL}/storage/${result.path}`;
+      // S3の直接URLを使用
+      const imageUrl = `https://${config.storage.bucket_name}.s3.${config.storage.aws_region}.amazonaws.com/${result.path}`;
+      console.log('Image URL:', imageUrl);
+      // imageUrlに /public/publicと重複している場合は削除
+      const imageUrlWithoutPublic = imageUrl.replace('/public/public', '/public');
+      console.log('imageUrlWithoutPublic URL:', imageUrlWithoutPublic);
       await createMicropost({ 
         title, 
-        image_url: imageUrl 
+        image_url: imageUrlWithoutPublic
       });
 
-      // フォームのリセット
       setTitle('');
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';

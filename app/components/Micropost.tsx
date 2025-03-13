@@ -63,15 +63,8 @@ export const MicropostForm: React.FC = () => {
         path: `public/${fileName}`  // publicプレフィックスを付与
       }).result;
 
-      console.log('Upload result:', result);
-      console.log('result.path:', result.path);
-
-      // S3の直接URLを使用
       const imageUrl = `https://${config.storage.bucket_name}.s3.${config.storage.aws_region}.amazonaws.com/${result.path}`;
-      console.log('Image URL:', imageUrl);
-      // imageUrlに /public/publicと重複している場合は削除
-      const imageUrlWithoutPublic = imageUrl.replace('/public/public', '/public');
-      console.log('imageUrlWithoutPublic URL:', imageUrlWithoutPublic);
+
       await createMicropost({ 
         title, 
         image_url: imageUrl
